@@ -1,1 +1,53 @@
-# morning-proverb
+# Daily Context-Aware Proverb Bot
+
+매일 오전 7시(한국 시간)에 서울 날씨와 날짜를 반영한 잠언 구절 및 짧은 묵상을 생성해 카카오톡 **나에게 보내기**로 전달합니다. Gemini 응답은 공백과 줄바꿈을 포함해 200자 이내인지 검사합니다.
+
+## 동작
+
+1. GitHub Actions가 매일 22:00 UTC (다음 날 07:00 KST)에 실행됩니다. `workflow_dispatch`로 수동 실행도 할 수 있습니다.
+2. `wttr.in`에서 서울 날씨를 조회합니다. 조회가 실패하면 `상쾌한 아침`을 사용합니다.
+3. `gemini-2.5-flash`로 메시지를 생성하고, API 실패나 200자 초과 응답은 한 번 재시도합니다.
+4. 본인·배우자·딸·장인·장모님의 refresh token으로 각각 access token을 발급합니다.
+5. 각 토큰으로 Kakao 기본 텍스트 템플릿 API를 호출해 해당 계정의 나와의 채팅으로 보냅니다. 친구 목록이나 친구 UUID, 친구 메시지 API는 사용하지 않습니다.
+6. 한 계정의 실패가 다른 계정 발송을 중단하지 않습니다. 일부 계정이 실패하면 Actions 실행도 실패로 표시합니다.
+7. Kakao가 새 refresh token을 반환하면 해당 계정 이름만 로그와 본인 계정의 기술 안내에 표시합니다. Secret은 자동 수정하지 않으므로 새 토큰으로 직접 교체해야 합니다. 토큰 값은 로그나 안내에 출력하지 않습니다.
+
+## GitHub 설정
+
+저장소의 **Settings → Secrets and variables → Actions**에서 다음 Repository secrets를 등록하세요.
+
+| Secret | 설명 |
+| --- | --- |
+| `GEMINI_API_KEY` | Google AI Studio API 키 |
+| `KAKAO_REST_API_KEY` | Kakao 앱의 REST API 키 |
+| `KAKAO_REFRESH_TOKEN_ME` | 본인 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_REFRESH_TOKEN_WIFE` | 배우자 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_REFRESH_TOKEN_DAUGHTER` | 딸 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` | 장인 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` | 장모님 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_CLIENT_SECRET` | Kakao 앱에서 Client Secret을 켠 경우에만 등록 |
+
+가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다.
+
+각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. 토큰이 만료되었거나 동의가 취소된 경우 해당 계정만 실패하며, Actions 로그에서 원인을 확인할 수 있습니다.
+
+### Refresh token 갱신
+
+Kakao 응답에 `refresh_token`이 포함되면 Actions 로그에 계정별 갱신 경고가 남고, 본인 계정 발송이 가능할 경우 본인 나와의 채팅에도 기술 안내가 전달됩니다. 해당 가족 계정으로 다시 토큰을 발급하거나 갱신한 뒤 **Settings → Secrets and variables → Actions**에서 대응하는 `KAKAO_REFRESH_TOKEN_*` Secret을 직접 교체하세요. 값은 로그나 메시지에 표시되지 않습니다.
+
+## 실행 및 확인
+
+GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 실행할 수 있습니다. 실행 로그에는 생성된 문구와 글자 수가 표시되므로 민감한 토큰을 로그에 출력하지 않고 결과를 확인할 수 있습니다.
+
+## 로컬 실행
+
+Python 3.10 이상에서 의존성을 설치하고 Secrets에 해당하는 환경 변수를 설정한 뒤 실행하세요. 예를 들어 본인 계정만 실행할 때:
+
+```bash
+python -m pip install -r requirements.txt
+export GEMINI_API_KEY="..."
+export KAKAO_REST_API_KEY="..."
+export KAKAO_REFRESH_TOKEN_ME="..."
+export GITHUB_REPOSITORY="owner/repository"
+python main.py
+```
