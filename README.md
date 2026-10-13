@@ -31,9 +31,28 @@
 
 각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. `expired_or_invalid_refresh_token` 또는 `KOE322`가 나오면 해당 계정의 refresh token이 만료·무효이거나 비어 있는 것이므로, 그 계정으로 인가 코드를 통해 토큰을 다시 발급하고 대응하는 Secret을 교체하세요. 토큰 발급/갱신에는 Kakao 앱 설정에서 Client Secret이 켜져 있으면 `KAKAO_CLIENT_SECRET`도 필요합니다. 한 계정의 오류는 나머지 계정 발송을 중단하지 않습니다.
 
+### 가족별 refresh token 발급 도구
+
+`get_tokens.py`는 로컬 컴퓨터에서만 실행하는 OAuth 도구입니다. Kakao Developers의 **앱 설정 → 플랫폼 키 → REST API 키 → Redirect URI**에 아래 주소를 등록하세요. 도구는 `127.0.0.1`에서만 실행되고, 토큰은 브라우저 결과 화면에만 표시됩니다.
+
+```text
+http://127.0.0.1:5000/oauth
+```
+
+저장소 폴더에서 Flask 의존성을 설치하고 키를 입력해 실행합니다. macOS 기본 zsh에서는 `read -s`로 입력하면 키가 명령 기록에 남지 않습니다. Client Secret을 앱에서 활성화한 경우에만 입력하세요.
+
+```bash
+python -m pip install -r requirements.txt
+read -s "KAKAO_REST_API_KEY?Kakao REST API key: "; export KAKAO_REST_API_KEY; echo
+read -s "KAKAO_CLIENT_SECRET?Client Secret (Enter if disabled): "; export KAKAO_CLIENT_SECRET; echo
+python get_tokens.py
+```
+
+브라우저에서 [http://127.0.0.1:5000](http://127.0.0.1:5000)을 열고, **토큰을 받을 가족 본인의 카카오 계정**으로 로그인해 메시지 전송에 동의합니다. 발급 완료 화면에 나온 refresh token을 복사해 해당 `KAKAO_REFRESH_TOKEN_*` Repository secret에 저장하세요. 다음 구성원은 브라우저에서 로그아웃하거나 시크릿 창을 열어 그 사람의 계정으로 같은 절차를 반복합니다. 모두 끝나면 터미널에서 `Ctrl+C`로 서버를 종료하고 토큰 페이지를 닫으세요. 토큰 값을 터미널, 채팅, 코드, 저장소에 붙여 넣지 마세요.
+
 ### Refresh token 갱신
 
-Kakao 응답에 `refresh_token`이 포함되면 Actions 로그에 계정별 갱신 경고가 남고, 본인 계정 발송이 가능할 경우 본인 나와의 채팅에도 기술 안내가 전달됩니다. 해당 가족 계정으로 다시 토큰을 발급하거나 갱신한 뒤 **Settings → Secrets and variables → Actions**에서 대응하는 `KAKAO_REFRESH_TOKEN_*` Secret을 직접 교체하세요. 값은 로그나 메시지에 표시되지 않습니다.
+Kakao 응답에 새 `refresh_token`이 포함되면 Actions 로그에 계정별 갱신 경고가 남고, 본인 계정 발송이 가능할 경우 본인 나와의 채팅에도 기술 안내가 전달됩니다. 만료되거나 무효가 된 토큰(`KOE322`)은 갱신할 수 없으므로 위 도구를 실행해 해당 가족 계정으로 새 토큰을 발급하세요. **Settings → Secrets and variables → Actions**에서 대응하는 `KAKAO_REFRESH_TOKEN_*` Secret을 새 값으로 교체합니다. 값은 로그나 안내 메시지에 표시되지 않습니다.
 
 ## 실행 및 확인
 
