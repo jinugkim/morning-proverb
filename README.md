@@ -29,6 +29,8 @@
 
 가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다.
 
+현재 장인·장모님 계정은 토큰 문제로 발송을 잠시 중지했습니다. 워크플로에서 `KAKAO_SKIP_FATHER_IN_LAW`와 `KAKAO_SKIP_MOTHER_IN_LAW`가 `true`로 설정되어 있어 해당 토큰이 등록되어 있어도 요청하지 않습니다. 재개할 때 두 값을 `false`로 바꾸고 유효한 가족별 Secret을 등록하세요.
+
 각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. `expired_or_invalid_refresh_token` 또는 `KOE322`가 나오면 해당 계정의 refresh token이 만료·무효이거나 비어 있는 것이므로, 그 계정으로 인가 코드를 통해 토큰을 다시 발급하고 대응하는 Secret을 교체하세요. 토큰 발급/갱신에는 Kakao 앱 설정에서 Client Secret이 켜져 있으면 `KAKAO_CLIENT_SECRET`도 필요합니다. 한 계정의 오류는 나머지 계정 발송을 중단하지 않습니다.
 
 ### 가족별 refresh token 발급 도구

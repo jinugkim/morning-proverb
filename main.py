@@ -110,18 +110,22 @@ def send_kakao_message(access_token: str, message: str) -> None:
 
 def configured_accounts() -> list[tuple[str, str]]:
     """Prefer individually named family tokens; retain the legacy token list."""
-    accounts = [
-        (name, os.getenv(secret, "").strip())
-        for name, secret in (
-            ("본인", "KAKAO_REFRESH_TOKEN_ME"),
-            ("배우자", "KAKAO_REFRESH_TOKEN_WIFE"),
-            ("딸", "KAKAO_REFRESH_TOKEN_DAUGHTER"),
-            ("장인", "KAKAO_REFRESH_TOKEN_FATHER_IN_LAW"),
-            ("장모님", "KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW"),
-        )
-        if os.getenv(secret, "").strip()
-    ]
-    if accounts:
+    family = (
+        ("본인", "KAKAO_REFRESH_TOKEN_ME", None),
+        ("배우자", "KAKAO_REFRESH_TOKEN_WIFE", None),
+        ("딸", "KAKAO_REFRESH_TOKEN_DAUGHTER", None),
+        ("장인", "KAKAO_REFRESH_TOKEN_FATHER_IN_LAW", "KAKAO_SKIP_FATHER_IN_LAW"),
+        ("장모님", "KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW", "KAKAO_SKIP_MOTHER_IN_LAW"),
+    )
+    family_values = [(name, secret, skip_env, os.getenv(secret, "").strip()) for name, secret, skip_env in family]
+    if any(value for _, _, _, value in family_values):
+        accounts = []
+        for name, _, skip_env, token in family_values:
+            if skip_env and os.getenv(skip_env, "").strip().lower() in {"1", "true", "yes", "on"}:
+                print(f"Skipping {name} account (temporarily disabled).")
+                continue
+            if token:
+                accounts.append((name, token))
         return accounts
 
     # Backward compatibility: JSON array is preferred; comma/newline-separated
