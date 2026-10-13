@@ -6,7 +6,7 @@
 
 1. GitHub Actions가 매일 22:00 UTC (다음 날 07:00 KST)에 실행됩니다. `workflow_dispatch`로 수동 실행도 할 수 있습니다.
 2. `wttr.in`에서 서울 날씨를 조회합니다. 조회가 실패하면 `상쾌한 아침`을 사용합니다.
-3. `gemini-2.5-flash`로 메시지를 생성하고, API 실패나 200자 초과 응답은 한 번 재시도합니다.
+3. `gemini-3.8-flash`로 메시지를 생성하고, API 실패나 200자 초과 응답은 한 번 재시도합니다.
 4. 본인·배우자·딸·장인·장모님의 refresh token으로 각각 access token을 발급합니다.
 5. 각 토큰으로 Kakao 기본 텍스트 템플릿 API를 호출해 해당 계정의 나와의 채팅으로 보냅니다. 친구 목록이나 친구 UUID, 친구 메시지 API는 사용하지 않습니다.
 6. 한 계정의 실패가 다른 계정 발송을 중단하지 않습니다. 일부 계정이 실패하면 Actions 실행도 실패로 표시합니다.
@@ -25,11 +25,11 @@
 | `KAKAO_REFRESH_TOKEN_DAUGHTER` | 딸 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` | 장인 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` | 장모님 Kakao 계정에서 발급한 refresh token |
-| `KAKAO_CLIENT_SECRET` | Kakao 앱에서 Client Secret을 켠 경우에만 등록 |
+| `KAKAO_CLIENT_SECRET` | Kakao REST API 키의 Client Secret 값. 기본 활성화되어 있으므로, 명시적으로 끈 경우가 아니라면 등록 |
 
 가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다.
 
-각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. 토큰이 만료되었거나 동의가 취소된 경우 해당 계정만 실패하며, Actions 로그에서 원인을 확인할 수 있습니다.
+각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. `expired_or_invalid_refresh_token` 또는 `KOE322`가 나오면 해당 계정의 refresh token이 만료·무효이거나 비어 있는 것이므로, 그 계정으로 인가 코드를 통해 토큰을 다시 발급하고 대응하는 Secret을 교체하세요. 토큰 발급/갱신에는 Kakao 앱 설정에서 Client Secret이 켜져 있으면 `KAKAO_CLIENT_SECRET`도 필요합니다. 한 계정의 오류는 나머지 계정 발송을 중단하지 않습니다.
 
 ### Refresh token 갱신
 
