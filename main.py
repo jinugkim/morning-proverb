@@ -6,8 +6,7 @@ import json
 import os
 import re
 import sys
-from datetime import date as CalendarDate, datetime
-from pathlib import Path
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import requests
@@ -35,63 +34,18 @@ def get_weather() -> str:
         return "상쾌한 아침"
 
 
-def load_proverbs() -> list[dict[str, object]]:
-    path = Path(__file__).with_name("proverbs.json")
-    data = json.loads(path.read_text(encoding="utf-8"))
-    verses = data.get("verses")
-    if not isinstance(verses, list) or not verses:
-        raise RuntimeError("proverbs.json must contain a non-empty verses list.")
-
-    seen: set[tuple[int, int]] = set()
-    for item in verses:
-        if not isinstance(item, dict):
-            raise RuntimeError("Each proverb entry must be a JSON object.")
-        chapter, verse, text = item.get("chapter"), item.get("verse"), item.get("text")
-        if not isinstance(chapter, int) or not 1 <= chapter <= 31:
-            raise RuntimeError(f"Invalid Proverbs chapter in proverbs.json: {chapter}")
-        if not isinstance(verse, int) or verse < 1 or not isinstance(text, str) or not text.strip():
-            raise RuntimeError(f"Invalid Proverbs verse entry: {item}")
-        reference = (chapter, verse)
-        if reference in seen:
-            raise RuntimeError(f"Duplicate Proverbs reference in proverbs.json: {chapter}:{verse}")
-        seen.add(reference)
-    return verses
-
-
-def select_proverb(date: datetime) -> dict[str, object]:
-    verses = load_proverbs()
-    day_number = (date.date() - CalendarDate(2026, 1, 1)).days
-    return verses[day_number % len(verses)]
-
-
-def compose_message(proverb: dict[str, object], reflection: str) -> str:
-    message = (
-        "[오늘의 잠언]\n"
-        f'"{proverb["text"]}" (잠언 {proverb["chapter"]}장 {proverb["verse"]}절)\n'
-        f"- {reflection}"
-    )
-    if len(message) > MAX_MESSAGE_LENGTH:
-        raise RuntimeError(f"Composed proverb message exceeds {MAX_MESSAGE_LENGTH} characters.")
-    return message
-
-
-def generate_reflection(date: datetime, weather: str, proverb: dict[str, object]) -> str:
+def generate_message(date: datetime, weather: str) -> str:
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    reference = f"잠언 {proverb['chapter']}장 {proverb['verse']}절"
-    quoted_verse = str(proverb["text"])
-    reflection_prefix = f'[오늘의 잠언]\n"{quoted_verse}" ({reference})\n- '
-    max_reflection_length = MAX_MESSAGE_LENGTH - len(reflection_prefix)
     prompt = (
         f"오늘 상황: {date.month}월 {date.day}일, {('월요일','화요일','수요일','목요일','금요일','토요일','일요일')[date.weekday()]}, "
-        f"서울 날씨는 {weather}입니다.\n"
-        f"오늘의 잠언은 {reference}입니다. 본문은 다음과 같습니다: {quoted_verse}\n\n"
-        "이 구절을 바탕으로 오늘 하루를 시작하는 데 도움이 되는 짧은 묵상과 응원 문장 하나만 작성해 주세요. "
-        "성경 구절이나 장절을 다시 쓰지 마세요."
+        f"서울 날씨는 {weather}입니다.\n\n"
+        "이 상황에 맞춰 오늘 하루를 시작하는 데 도움이 되는 성경 잠언 구절 1개와 짧은 묵상 메시지를 작성해 주세요.\n"
+        "[오늘의 잠언]\n\"구절 내용\" (잠언 X장 Y절)\n- 응원 메시지"
     )
     system_instruction = (
-        "한국어로 묵상과 응원 문장 하나만 답하세요. 날씨나 요일을 자연스럽게 반영하되 제공된 성경 본문과 장절은 "
-        "반복하거나 바꾸지 마세요. 제목, 인용구, 장절, 글자 수 설명은 출력하지 마세요. "
-        f"응답은 공백 포함 {max_reflection_length}자 이내의 한 문장으로 작성하세요."
+        "한국어로만 답하세요. 정확히 잠언 구절 하나와 짧은 응원 메시지를 요청 형식으로 작성하세요. "
+        "날씨나 요일의 감성을 자연스럽게 반영하세요. 제목, 구절, 인용부호, 출처, 메시지 등 공백과 줄바꿈을 포함한 "
+        "전체 응답은 반드시 200자 이내여야 합니다. 설명이나 글자 수 표시는 덧붙이지 마세요."
     )
     for attempt in range(2):
         try:
@@ -101,23 +55,28 @@ def generate_reflection(date: datetime, weather: str, proverb: dict[str, object]
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     thinking_config=types.ThinkingConfig(thinking_level="low"),
-                    max_output_tokens=512,
+                    max_output_tokens=1024,
                 ),
             )
-            reflection = " ".join((response.text or "").split()).strip(" \"'“”‘’*-")
+            message = (response.text or "").strip()
             candidate = response.candidates[0] if response.candidates else None
             finish_reason = str(getattr(candidate, "finish_reason", "")).upper()
             hit_token_limit = "MAX_TOKENS" in finish_reason
-            contains_new_reference = bool(re.search(r"잠언\s*\d+\s*장\s*\d+\s*절", reflection))
-            if reflection and len(reflection) <= max_reflection_length and not contains_new_reference and not hit_token_limit:
-                return reflection
+            complete_format = (
+                "[오늘의 잠언]" in message
+                and re.search(r"\(\s*잠언\s*\d+\s*장\s*\d+\s*절\s*\)", message)
+                and re.search(r"(?:^|\n)\s*-\s*\S", message)
+            )
+            if message and len(message) <= MAX_MESSAGE_LENGTH and complete_format and not hit_token_limit:
+                return message
             print(
-                f"Gemini returned an incomplete/invalid reflection ({len(reflection)} chars); "
+                f"Gemini returned an incomplete/invalid message ({len(message)} chars); "
                 f"retry {attempt + 1}/1"
             )
         except Exception as exc:  # retry once for API and transient response errors
             print(f"Gemini request failed; retry {attempt + 1}/1: {exc}")
-    return "오늘도 지혜를 따라 한 걸음씩 나아가요."
+    # A short fallback ensures that a model/API failure does not prevent delivery.
+    return "[오늘의 잠언]\n‘마음의 즐거움은 얼굴을 빛나게 한다’ (잠언 15장 13절)\n- 오늘도 기쁨으로 시작해요."
 
 
 def refresh_kakao_token(refresh_token: str, rest_api_key: str) -> tuple[str, str | None]:
@@ -201,9 +160,7 @@ def configured_accounts() -> list[tuple[str, str]]:
 def main() -> None:
     now = datetime.now(SEOUL)
     weather = get_weather()
-    proverb = select_proverb(now)
-    reflection = generate_reflection(now, weather, proverb)
-    message = compose_message(proverb, reflection)
+    message = generate_message(now, weather)
     print(f"Generated message ({len(message)} chars):\n{message}")
 
     accounts = configured_accounts()
