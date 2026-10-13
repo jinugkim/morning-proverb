@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -53,13 +54,25 @@ def generate_message(date: datetime, weather: str) -> str:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    max_output_tokens=300,
+                    thinking_config=types.ThinkingConfig(thinking_level="low"),
+                    max_output_tokens=1024,
                 ),
             )
             message = (response.text or "").strip()
-            if message and len(message) <= MAX_MESSAGE_LENGTH:
+            candidate = response.candidates[0] if response.candidates else None
+            finish_reason = str(getattr(candidate, "finish_reason", "")).upper()
+            hit_token_limit = "MAX_TOKENS" in finish_reason
+            complete_format = (
+                "[오늘의 잠언]" in message
+                and re.search(r"\(\s*잠언\s*\d+\s*장\s*\d+\s*절\s*\)", message)
+                and re.search(r"(?:^|\n)\s*-\s*\S", message)
+            )
+            if message and len(message) <= MAX_MESSAGE_LENGTH and complete_format and not hit_token_limit:
                 return message
-            print(f"Gemini returned {len(message)} characters; retry {attempt + 1}/1")
+            print(
+                f"Gemini returned an incomplete/invalid message ({len(message)} chars); "
+                f"retry {attempt + 1}/1"
+            )
         except Exception as exc:  # retry once for API and transient response errors
             print(f"Gemini request failed; retry {attempt + 1}/1: {exc}")
     # A short fallback ensures that a model/API failure does not prevent delivery.
