@@ -2,12 +2,16 @@ name: Daily Proverb
 
 on:
   schedule:
-    # 09:00 KST (00:00 UTC)
-    - cron: "0 0 * * *"
+    # 02:27 KST (17:27 UTC on the previous day)
+    - cron: "27 17 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: daily-proverb-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   send-proverb:
@@ -39,3 +43,15 @@ jobs:
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python main.py
+      - name: Commit proverb history
+        if: always()
+        run: |
+          if [ -z "$(git status --porcelain -- docs/proverbs.json)" ]; then
+            echo "No proverb history changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/proverbs.json
+          git commit -m "Update daily proverb history"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

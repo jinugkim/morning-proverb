@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>발송한 성경 문구</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { margin-bottom: .25rem; }
+    .hint { color: GrayText; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    th, td { padding: .8rem; border-bottom: 1px solid #8886; text-align: left; vertical-align: top; }
+    th:first-child, td:first-child { width: 8rem; white-space: nowrap; }
+    .message { white-space: pre-wrap; }
+    @media (max-width: 560px) { th, td { padding: .55rem .35rem; } th:first-child, td:first-child { width: 6rem; } }
+  </style>
+</head>
+<body>
+  <h1>발송한 성경 문구</h1>
+  <p class="hint">카카오톡 발송에 성공한 날짜와 잠언 구절입니다.</p>
+  <p id="status" role="status">기록을 불러오는 중…</p>
+  <table>
+    <thead><tr><th scope="col">날짜</th><th scope="col">잠언과 묵상</th></tr></thead>
+    <tbody id="records"></tbody>
+  </table>
+  <script>
+    fetch('./proverbs.json')
+      .then(response => { if (!response.ok) throw new Error('기록을 불러오지 못했습니다.'); return response.json(); })
+      .then(items => {
+        const body = document.querySelector('#records');
+        for (const item of items) {
+          const row = document.createElement('tr');
+          const date = document.createElement('td');
+          const message = document.createElement('td');
+          date.textContent = item.date;
+          message.className = 'message';
+          message.textContent = item.scripture;
+          row.append(date, message);
+          body.append(row);
+        }
+        document.querySelector('#status').textContent = items.length ? '' : '아직 발송 기록이 없습니다.';
+      })
+      .catch(error => { document.querySelector('#status').textContent = error.message; });
+  </script>
+</body>
+</html>

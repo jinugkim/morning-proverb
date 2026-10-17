@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
@@ -121,6 +122,35 @@ def send_kakao_message(access_token: str, message: str) -> None:
     print("KakaoTalk message sent.")
 
 
+def record_proverb(date: datetime, message: str) -> None:
+    """Record only the date and cited proverb line for the public Pages table."""
+    scripture = next(
+        (line.strip() for line in message.splitlines() if re.search(r"\(\s*잠언\s*\d+\s*장\s*\d+\s*절\s*\)", line)),
+        None,
+    )
+    if not scripture:
+        print("Could not find a cited proverb line; skipping public history update.", file=sys.stderr)
+        return
+
+    record_path = Path("docs/proverbs.json")
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        records = json.loads(record_path.read_text(encoding="utf-8"))
+        if not isinstance(records, list):
+            records = []
+    except (FileNotFoundError, json.JSONDecodeError):
+        records = []
+
+    day = date.date().isoformat()
+    record = {"date": day, "scripture": scripture}
+    records = [item for item in records if item.get("date") != day]
+    records.append(record)
+    records.sort(key=lambda item: item.get("date", ""), reverse=True)
+    record_path.write_text(
+        json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def configured_accounts() -> list[tuple[str, str]]:
     """Prefer individually named family tokens; retain the legacy token list."""
     family = (
@@ -171,6 +201,7 @@ def main() -> None:
     self_access_token: str | None = None
     failures: list[str] = []
     rotated_accounts: list[str] = []
+    delivered = False
 
     for account_name, refresh_token in accounts:
         try:
@@ -181,11 +212,15 @@ def main() -> None:
                 rotated_accounts.append(account_name)
                 print(f"WARNING: Kakao returned a rotated refresh token for {account_name}; update its GitHub Secret manually.")
             send_kakao_message(access_token, message)
+            delivered = True
             print(f"Proverb sent to {account_name} account.")
         except Exception as exc:
             # Continue so one expired family token cannot block other recipients.
             failures.append(account_name)
             print(f"ERROR: Kakao delivery failed for {account_name}: {exc}", file=sys.stderr)
+
+    if delivered:
+        record_proverb(now, message)
 
     notices = []
     if rotated_accounts:
