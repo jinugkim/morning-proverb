@@ -15,7 +15,7 @@
 
 ## 발송 기록 페이지
 
-`docs/index.html`은 발송 날짜와 잠언 문구만 표로 보여줍니다. Pages를 사용하려면 저장소의 **Settings → Pages**에서 배포 소스를 `Deploy from a branch`, 기본 브랜치, 폴더 `/docs`로 지정하세요. 설정이 완료되면 발송 성공 후 Actions가 기록을 커밋하고 Pages가 갱신됩니다.
+`docs/index.html`은 발송 날짜와 잠언 문구만 표로 보여줍니다. 저장소의 **Settings → Pages → Build and deployment → Source**에서 `GitHub Actions`를 선택하세요. `Deploy GitHub Pages` 워크플로가 코드 변경 시, `Daily Proverb` 워크플로 완료 후, 또는 수동 실행 시 `docs/`를 배포합니다. 발송 성공 후에는 Actions가 기록을 커밋하고 이어서 Pages를 갱신합니다.
 
 Pages 사이트는 공개될 수 있으므로, 성경 번역문 게시 권한과 사이트 접근 범위를 확인하세요. 현재 문구는 모델이 생성하며 특정 번역본의 정확한 본문을 보장하지 않습니다.
 
