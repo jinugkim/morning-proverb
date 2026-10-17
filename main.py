@@ -17,6 +17,8 @@ from google.genai import types
 
 SEOUL = ZoneInfo("Asia/Seoul")
 MAX_MESSAGE_LENGTH = 200
+HISTORY_LINK_NOTICE = "\n\n지난 잠언 기록 보기:\nhttps://jinugkim.github.io/morning-proverb/"
+MAX_PROVERB_LENGTH = MAX_MESSAGE_LENGTH - len(HISTORY_LINK_NOTICE)
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 KAKAO_SEND_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
 
@@ -46,7 +48,9 @@ def generate_message(date: datetime, weather: str) -> str:
     system_instruction = (
         "한국어로만 답하세요. 정확히 잠언 구절 하나와 짧은 응원 메시지를 요청 형식으로 작성하세요. "
         "날씨나 요일의 감성을 자연스럽게 반영하세요. 제목, 구절, 인용부호, 출처, 메시지 등 공백과 줄바꿈을 포함한 "
-        "전체 응답은 반드시 200자 이내여야 합니다. 설명이나 글자 수 표시는 덧붙이지 마세요."
+        f"잠언과 묵상 부분 뒤에 아래 안내 문구가 붙습니다:\n{HISTORY_LINK_NOTICE.strip()}\n"
+        f"최종 메시지가 "
+        f"200자 이내가 되도록 {MAX_PROVERB_LENGTH}자 이내로 작성하세요. 설명이나 글자 수 표시는 덧붙이지 마세요."
     )
     for attempt in range(2):
         try:
@@ -68,7 +72,7 @@ def generate_message(date: datetime, weather: str) -> str:
                 and re.search(r"\(\s*잠언\s*\d+\s*장\s*\d+\s*절\s*\)", message)
                 and re.search(r"(?:^|\n)\s*-\s*\S", message)
             )
-            if message and len(message) <= MAX_MESSAGE_LENGTH and complete_format and not hit_token_limit:
+            if message and len(message) <= MAX_PROVERB_LENGTH and complete_format and not hit_token_limit:
                 return message
             print(
                 f"Gemini returned an incomplete/invalid message ({len(message)} chars); "
@@ -78,6 +82,13 @@ def generate_message(date: datetime, weather: str) -> str:
             print(f"Gemini request failed; retry {attempt + 1}/1: {exc}")
     # A short fallback ensures that a model/API failure does not prevent delivery.
     return "[오늘의 잠언]\n‘마음의 즐거움은 얼굴을 빛나게 한다’ (잠언 15장 13절)\n- 오늘도 기쁨으로 시작해요."
+
+
+def add_history_link(message: str) -> str:
+    outgoing = message.rstrip() + HISTORY_LINK_NOTICE
+    if len(outgoing) > MAX_MESSAGE_LENGTH:
+        raise ValueError(f"Final Kakao message exceeds {MAX_MESSAGE_LENGTH} characters")
+    return outgoing
 
 
 def refresh_kakao_token(refresh_token: str, rest_api_key: str) -> tuple[str, str | None]:
@@ -102,7 +113,7 @@ def refresh_kakao_token(refresh_token: str, rest_api_key: str) -> tuple[str, str
 
 def send_kakao_message(access_token: str, message: str) -> None:
     if len(message) > MAX_MESSAGE_LENGTH:
-        message = message[:MAX_MESSAGE_LENGTH]
+        raise ValueError(f"Kakao message exceeds {MAX_MESSAGE_LENGTH} characters")
     repository_url = f"https://github.com/{os.getenv('GITHUB_REPOSITORY', '')}".rstrip("/")
     template = {
         "object_type": "text",
@@ -190,7 +201,8 @@ def configured_accounts() -> list[tuple[str, str]]:
 def main() -> None:
     now = datetime.now(SEOUL)
     weather = get_weather()
-    message = generate_message(now, weather)
+    proverb_message = generate_message(now, weather)
+    message = add_history_link(proverb_message)
     print(f"Generated message ({len(message)} chars):\n{message}")
 
     accounts = configured_accounts()
@@ -220,7 +232,7 @@ def main() -> None:
             print(f"ERROR: Kakao delivery failed for {account_name}: {exc}", file=sys.stderr)
 
     if delivered:
-        record_proverb(now, message)
+        record_proverb(now, proverb_message)
 
     notices = []
     if rotated_accounts:
