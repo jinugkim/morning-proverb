@@ -49,13 +49,17 @@ Pages 사이트는 공개될 수 있으므로, 성경 번역문 게시 권한과
 http://127.0.0.1:5001/oauth
 ```
 
-저장소 폴더에서 Flask 의존성을 설치하고 키를 입력해 실행합니다. macOS 기본 zsh에서는 `read -s`로 입력하면 키가 명령 기록에 남지 않습니다. Client Secret을 앱에서 활성화한 경우에만 입력하세요.
+최초 한 번 저장소 폴더에서 로컬 설정 파일을 만듭니다.
 
 ```bash
-python -m pip install -r requirements.txt
-read -s "KAKAO_REST_API_KEY?Kakao REST API key: "; export KAKAO_REST_API_KEY; echo
-read -s "KAKAO_CLIENT_SECRET?Client Secret (Enter if disabled): "; export KAKAO_CLIENT_SECRET; echo
-python get_tokens.py
+cp .env.example .env
+open -e .env
+```
+
+열린 `.env`에 `KAKAO_REST_API_KEY`를 입력하고 저장하세요. Kakao 앱에서 Client Secret이 활성화된 경우에만 `KAKAO_CLIENT_SECRET`도 입력합니다. 토큰 발급 도구에는 이 두 값만 필요합니다. `.env`는 Git에서 제외되며 `.env.example`만 저장소에 포함됩니다. 의존성은 `requirements.txt`에 정의되어 있으므로 아직 설치하지 않았다면 `python3 -m pip install -r requirements.txt`를 한 번 실행하세요. 이후 토큰 도구는 아래 한 줄로 실행합니다.
+
+```bash
+python3 get_tokens.py
 ```
 
 브라우저에서 [http://127.0.0.1:5001](http://127.0.0.1:5001)을 열고, **토큰을 받을 가족 본인의 카카오 계정**으로 로그인해 메시지 전송에 동의합니다. 발급 완료 화면에 나온 refresh token을 복사해 해당 `KAKAO_REFRESH_TOKEN_*` Repository secret에 저장하세요. 다음 구성원은 브라우저에서 로그아웃하거나 시크릿 창을 열어 그 사람의 계정으로 같은 절차를 반복합니다. 모두 끝나면 터미널에서 `Ctrl+C`로 서버를 종료하고 토큰 페이지를 닫으세요. 토큰 값을 터미널, 채팅, 코드, 저장소에 붙여 넣지 마세요.
@@ -70,13 +74,13 @@ GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 
 
 ## 로컬 실행
 
-Python 3.10 이상에서 의존성을 설치하고 Secrets에 해당하는 환경 변수를 설정한 뒤 실행하세요. 예를 들어 본인 계정만 실행할 때:
+Python 3.10 이상에서 의존성을 설치한 뒤 `.env.example`을 `.env`로 복사하고 로컬 실행에 필요한 값을 채우세요. `.env`는 무시되므로 저장소에 커밋되지 않습니다. 예를 들어 본인 계정만 실행할 때:
 
 ```bash
-python -m pip install -r requirements.txt
-export GEMINI_API_KEY="..."
-export KAKAO_REST_API_KEY="..."
-export KAKAO_REFRESH_TOKEN_ME="..."
-export GITHUB_REPOSITORY="owner/repository"
-python main.py
+cp .env.example .env
+open -e .env
+python3 -m pip install -r requirements.txt
+python3 main.py
 ```
+
+GitHub Actions에서는 계속 Repository secrets를 사용하며, 로컬 `.env` 파일은 읽지 않습니다.

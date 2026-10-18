@@ -5,8 +5,12 @@ import secrets
 from urllib.parse import urlencode
 
 import requests
+from dotenv import load_dotenv
 from flask import Flask, abort, request, session
 
+
+# Load local credentials for interactive use; existing environment values win (e.g. CI).
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)

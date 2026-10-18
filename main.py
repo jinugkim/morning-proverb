@@ -11,6 +11,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
@@ -20,6 +21,9 @@ MAX_MESSAGE_LENGTH = 200
 HISTORY_LINK_MESSAGE = "지난 잠언 기록 보기:\nhttps://jinugkim.github.io/morning-proverb/"
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 KAKAO_SEND_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+
+# Keep local development convenient while preserving injected CI secrets.
+load_dotenv()
 
 
 def get_weather() -> str:
