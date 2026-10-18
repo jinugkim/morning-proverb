@@ -205,6 +205,7 @@ def main() -> None:
         "me": "본인",
         "wife": "배우자",
         "daughter": "딸",
+        "father_in_law": "장인",
         "mother_in_law": "장모님",
     }
     if target:
@@ -253,6 +254,14 @@ def main() -> None:
         )
     if failures and not test_mode:
         notices.append(f"[발송 오류 안내] 다음 계정의 잠언 메시지 발송에 실패했습니다: {', '.join(failures)}. Actions 로그를 확인해 주세요.")
+    if failures:
+        summary_path = os.getenv("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as summary:
+                summary.write("\n### Kakao 발송 실패 계정\n\n")
+                summary.write("| 계정 | 결과 |\n| --- | --- |\n")
+                for account_name in failures:
+                    summary.write(f"| {account_name} | 발송 실패 (세부 내용은 Actions 로그 참고) |\n")
     if notices and self_access_token:
         for notice in notices:
             try:

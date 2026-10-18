@@ -37,7 +37,7 @@ Pages 사이트는 공개될 수 있으므로, 성경 번역문 게시 권한과
 
 가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다.
 
-현재 장인 계정은 토큰 문제로 발송을 잠시 중지했습니다. 장모님 계정은 유효한 `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` Secret을 등록하면 발송 대상에 포함됩니다. 장인 발송을 재개할 때는 `KAKAO_SKIP_FATHER_IN_LAW`를 `false`로 바꾸고 유효한 가족별 Secret을 등록하세요.
+장인·장모님 모두 발송 대상입니다. 각 계정의 유효한 `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` 및 `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` Secret을 등록하세요. 한 가족 계정의 발송이 실패해도 다른 계정 처리는 계속하며, 실패 계정은 Actions 실행 요약과 로그에 별도로 기록합니다. 실행은 실패로 표시해 확인할 수 있도록 합니다.
 
 각 가족 구성원은 본인 카카오 계정으로 로그인하고 `talk_message` 동의를 완료한 뒤 자기 refresh token을 발급해야 합니다. Kakao Developers에서 Kakao Login 및 Kakao Talk Message 사용도 설정해야 합니다. 모든 계정 토큰은 같은 Kakao 앱의 REST API 키와 (사용 설정 시) Client Secret으로 발급해야 합니다. `expired_or_invalid_refresh_token` 또는 `KOE322`가 나오면 해당 계정의 refresh token이 만료·무효이거나 비어 있는 것이므로, 그 계정으로 인가 코드를 통해 토큰을 다시 발급하고 대응하는 Secret을 교체하세요. 토큰 발급/갱신에는 Kakao 앱 설정에서 Client Secret이 켜져 있으면 `KAKAO_CLIENT_SECRET`도 필요합니다. 한 계정의 오류는 나머지 계정 발송을 중단하지 않습니다.
 
@@ -66,7 +66,7 @@ Kakao 응답에 새 `refresh_token`이 포함되면 Actions 로그에 계정별 
 
 ## 실행 및 확인
 
-GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 실행할 수 있습니다. 수동 실행에서는 수신자를 `all`, `me`, `wife`, `daughter`, `mother_in_law` 중에서 선택할 수 있습니다. `test_mode`를 켜면 선택한 계정에 `[수신 확인]` 메시지 하나만 보내며, 잠언 기록은 생성하지 않습니다. 예약 실행은 기존처럼 설정된 대상 계정 전체에 잠언과 기록 링크를 보냅니다.
+GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 실행할 수 있습니다. 수동 실행에서는 수신자를 `all`, `me`, `wife`, `daughter`, `father_in_law`, `mother_in_law` 중에서 선택할 수 있습니다. `test_mode`를 켜면 선택한 계정에 `[수신 확인]` 메시지 하나만 보내며, 잠언 기록은 생성하지 않습니다. 예약 실행은 기존처럼 설정된 대상 계정 전체에 잠언과 기록 링크를 보냅니다.
 
 ## 로컬 실행
 
