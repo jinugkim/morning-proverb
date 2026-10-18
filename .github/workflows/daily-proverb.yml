@@ -5,6 +5,23 @@ on:
     # 02:27 KST (17:27 UTC on the previous day)
     - cron: "27 17 * * *"
   workflow_dispatch:
+    inputs:
+      recipient:
+        description: Message recipient (manual runs only)
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - me
+          - wife
+          - daughter
+          - mother_in_law
+      test_mode:
+        description: Send a short receipt check without generating a proverb or updating history
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: write
@@ -31,15 +48,17 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
-          KAKAO_REFRESH_TOKEN_ME: ${{ secrets.KAKAO_REFRESH_TOKEN_ME }}
-          KAKAO_REFRESH_TOKEN_WIFE: ${{ secrets.KAKAO_REFRESH_TOKEN_WIFE }}
-          KAKAO_REFRESH_TOKEN_DAUGHTER: ${{ secrets.KAKAO_REFRESH_TOKEN_DAUGHTER }}
-          KAKAO_REFRESH_TOKEN_FATHER_IN_LAW: ${{ secrets.KAKAO_REFRESH_TOKEN_FATHER_IN_LAW }}
-          KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW: ${{ secrets.KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW }}
+          KAKAO_REFRESH_TOKEN_ME: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'me') && secrets.KAKAO_REFRESH_TOKEN_ME || '' }}
+          KAKAO_REFRESH_TOKEN_WIFE: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'wife') && secrets.KAKAO_REFRESH_TOKEN_WIFE || '' }}
+          KAKAO_REFRESH_TOKEN_DAUGHTER: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'daughter') && secrets.KAKAO_REFRESH_TOKEN_DAUGHTER || '' }}
+          KAKAO_REFRESH_TOKEN_FATHER_IN_LAW: ${{ github.event_name == 'schedule' && secrets.KAKAO_REFRESH_TOKEN_FATHER_IN_LAW || '' }}
+          KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'mother_in_law') && secrets.KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW || '' }}
+          KAKAO_TARGET_ACCOUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.recipient != 'all' && inputs.recipient || '' }}
+          KAKAO_TEST_MODE: ${{ inputs.test_mode }}
           KAKAO_SKIP_FATHER_IN_LAW: "true"
           KAKAO_SKIP_MOTHER_IN_LAW: "false"
-          KAKAO_REFRESH_TOKENS: ${{ secrets.KAKAO_REFRESH_TOKENS }}
-          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          KAKAO_REFRESH_TOKENS: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all') && secrets.KAKAO_REFRESH_TOKENS || '' }}
+          KAKAO_REFRESH_TOKEN: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all') && secrets.KAKAO_REFRESH_TOKEN || '' }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python main.py

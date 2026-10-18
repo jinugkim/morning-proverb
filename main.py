@@ -191,11 +191,29 @@ def configured_accounts() -> list[tuple[str, str]]:
 
 def main() -> None:
     now = datetime.now(SEOUL)
-    weather = get_weather()
-    proverb_message = generate_message(now, weather)
+    test_mode = os.getenv("KAKAO_TEST_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
+    proverb_message = (
+        "[수신 확인] 카카오톡 메시지를 정상적으로 받을 수 있습니다."
+        if test_mode
+        else generate_message(now, get_weather())
+    )
     print(f"Generated message ({len(proverb_message)} chars):\n{proverb_message}")
 
     accounts = configured_accounts()
+    target = os.getenv("KAKAO_TARGET_ACCOUNT", "").strip()
+    target_names = {
+        "me": "본인",
+        "wife": "배우자",
+        "daughter": "딸",
+        "mother_in_law": "장모님",
+    }
+    if target:
+        if target not in target_names:
+            raise ValueError(f"Unknown Kakao recipient selection: {target}")
+        target_name = target_names[target]
+        accounts = [(name, token) for name, token in accounts if name == target_name]
+        if not accounts:
+            raise RuntimeError(f"No refresh token configured for selected recipient: {target_name}")
     if not accounts:
         raise RuntimeError("No Kakao refresh token configured. Add a family token secret.")
 
@@ -215,24 +233,25 @@ def main() -> None:
                 print(f"WARNING: Kakao returned a rotated refresh token for {account_name}; update its GitHub Secret manually.")
             send_kakao_message(access_token, proverb_message)
             delivered = True
-            print(f"Proverb sent to {account_name} account.")
-            send_kakao_message(access_token, HISTORY_LINK_MESSAGE)
-            print(f"History link sent to {account_name} account.")
+            print(f"{'Test' if test_mode else 'Proverb'} sent to {account_name} account.")
+            if not test_mode:
+                send_kakao_message(access_token, HISTORY_LINK_MESSAGE)
+                print(f"History link sent to {account_name} account.")
         except Exception as exc:
             # Continue so one expired family token cannot block other recipients.
             failures.append(account_name)
             print(f"ERROR: Kakao delivery failed for {account_name}: {exc}", file=sys.stderr)
 
-    if delivered:
+    if delivered and not test_mode:
         record_proverb(now, proverb_message)
 
     notices = []
-    if rotated_accounts:
+    if rotated_accounts and not test_mode:
         notices.append(
             f"[토큰 갱신 안내] {', '.join(rotated_accounts)} 계정의 Kakao refresh token이 교체되었습니다. "
             "해당 GitHub Secret을 새 토큰으로 수동 갱신해 주세요. 토큰 값은 로그에 표시하지 않았습니다."
         )
-    if failures:
+    if failures and not test_mode:
         notices.append(f"[발송 오류 안내] 다음 계정의 잠언 메시지 발송에 실패했습니다: {', '.join(failures)}. Actions 로그를 확인해 주세요.")
     if notices and self_access_token:
         for notice in notices:

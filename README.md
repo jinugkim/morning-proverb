@@ -66,7 +66,7 @@ Kakao 응답에 새 `refresh_token`이 포함되면 Actions 로그에 계정별 
 
 ## 실행 및 확인
 
-GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 실행할 수 있습니다. 실행 로그에는 생성된 문구와 글자 수가 표시되므로 민감한 토큰을 로그에 출력하지 않고 결과를 확인할 수 있습니다.
+GitHub 저장소의 **Actions → Daily Proverb → Run workflow**에서 수동 실행할 수 있습니다. 수동 실행에서는 수신자를 `all`, `me`, `wife`, `daughter`, `mother_in_law` 중에서 선택할 수 있습니다. `test_mode`를 켜면 선택한 계정에 `[수신 확인]` 메시지 하나만 보내며, 잠언 기록은 생성하지 않습니다. 예약 실행은 기존처럼 설정된 대상 계정 전체에 잠언과 기록 링크를 보냅니다.
 
 ## 로컬 실행
 
