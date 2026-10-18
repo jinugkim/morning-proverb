@@ -13,7 +13,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 
 REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY", "").strip()
-REDIRECT_URI = os.environ.get("KAKAO_REDIRECT_URI", "http://127.0.0.1:5000/oauth").strip()
+REDIRECT_URI = os.environ.get("KAKAO_REDIRECT_URI", "http://127.0.0.1:5001/oauth").strip()
 CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "").strip()
 AUTH_URL = "https://kauth.kakao.com/oauth/authorize"
 TOKEN_URL = "https://kauth.kakao.com/oauth/token"
@@ -123,4 +123,4 @@ def page(title, body):
 
 if __name__ == "__main__":
     # The OAuth callback carries credentials, so listen only on loopback.
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)
+    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5001")), debug=False)
