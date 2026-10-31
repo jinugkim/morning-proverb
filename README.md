@@ -7,7 +7,7 @@
 1. GitHub Actions가 매일 17:27 UTC (다음 날 02:27 KST)에 실행됩니다. `workflow_dispatch`로 수동 실행도 할 수 있습니다.
 2. `wttr.in`에서 서울 날씨를 조회합니다. 조회가 실패하면 `상쾌한 아침`을 사용합니다.
 3. `gemini-3.8-flash`로 메시지를 생성하고, 낮은 thinking level을 사용합니다. API 실패, 200자 초과, 잠언 장절 또는 응원 문구 누락 응답은 한 번 재시도합니다.
-4. 본인·배우자·딸·장인·장모님의 refresh token으로 각각 access token을 발급합니다.
+4. 본인·배우자·딸·어머니·장인·장모님의 refresh token으로 각각 access token을 발급합니다.
 5. 각 토큰으로 Kakao 기본 텍스트 템플릿 API를 호출해 해당 계정의 나와의 채팅으로 보냅니다. 친구 목록이나 친구 UUID, 친구 메시지 API는 사용하지 않습니다.
 6. 한 계정의 실패가 다른 계정 발송을 중단하지 않습니다. 일부 계정이 실패하면 Actions 실행도 실패로 표시합니다.
 7. Kakao가 새 refresh token을 반환하면 해당 계정 이름만 로그와 본인 계정의 기술 안내에 표시합니다. Secret은 자동 수정하지 않으므로 새 토큰으로 직접 교체해야 합니다. 토큰 값은 로그나 안내에 출력하지 않습니다.
@@ -31,11 +31,12 @@ Pages 사이트는 공개될 수 있으므로, 성경 번역문 게시 권한과
 | `KAKAO_REFRESH_TOKEN_ME` | 본인 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_WIFE` | 배우자 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_DAUGHTER` | 딸 Kakao 계정에서 발급한 refresh token |
+| `KAKAO_REFRESH_TOKEN_MOTHER` | 어머니 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` | 장인 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` | 장모님 Kakao 계정에서 발급한 refresh token |
 | `KAKAO_CLIENT_SECRET` | Kakao REST API 키의 Client Secret 값. 기본 활성화되어 있으므로, 명시적으로 끈 경우가 아니라면 등록 |
 
-가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다.
+가족별 Secret이 하나라도 설정되면 위에 설정한 계정 Secret만 처리합니다. 가족별 Secret이 모두 없으면 호환용 `KAKAO_REFRESH_TOKENS` Secret(JSON 배열 또는 쉼표/줄바꿈 구분)을 사용하고, 그것도 없으면 구버전 단일 `KAKAO_REFRESH_TOKEN`을 사용합니다. 가족별 구성이 일부만 되어 있어도 설정된 계정만 대상으로 합니다. 수동 실행 시 `mother`를 선택하면 어머니에게만 보낼 수 있습니다.
 
 장인·장모님 모두 발송 대상입니다. 각 계정의 유효한 `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` 및 `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` Secret을 등록하세요. 한 가족 계정의 발송이 실패해도 다른 계정 처리는 계속하며, 실패 계정은 Actions 실행 요약과 로그에 별도로 기록합니다. 실행은 실패로 표시해 확인할 수 있도록 합니다.
 

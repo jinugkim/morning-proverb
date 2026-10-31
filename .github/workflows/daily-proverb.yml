@@ -16,6 +16,7 @@ on:
           - me
           - wife
           - daughter
+          - mother
           - father_in_law
           - mother_in_law
       test_mode:
@@ -52,6 +53,7 @@ jobs:
           KAKAO_REFRESH_TOKEN_ME: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'me') && secrets.KAKAO_REFRESH_TOKEN_ME || '' }}
           KAKAO_REFRESH_TOKEN_WIFE: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'wife') && secrets.KAKAO_REFRESH_TOKEN_WIFE || '' }}
           KAKAO_REFRESH_TOKEN_DAUGHTER: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'daughter') && secrets.KAKAO_REFRESH_TOKEN_DAUGHTER || '' }}
+          KAKAO_REFRESH_TOKEN_MOTHER: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'mother') && secrets.KAKAO_REFRESH_TOKEN_MOTHER || '' }}
           KAKAO_REFRESH_TOKEN_FATHER_IN_LAW: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'father_in_law') && secrets.KAKAO_REFRESH_TOKEN_FATHER_IN_LAW || '' }}
           KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW: ${{ (github.event_name == 'schedule' || inputs.recipient == 'all' || inputs.recipient == 'mother_in_law') && secrets.KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW || '' }}
           KAKAO_TARGET_ACCOUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.recipient != 'all' && inputs.recipient || '' }}

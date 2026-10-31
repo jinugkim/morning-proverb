@@ -163,6 +163,7 @@ def configured_accounts() -> list[tuple[str, str]]:
         ("본인", "KAKAO_REFRESH_TOKEN_ME", None),
         ("배우자", "KAKAO_REFRESH_TOKEN_WIFE", None),
         ("딸", "KAKAO_REFRESH_TOKEN_DAUGHTER", None),
+        ("어머니", "KAKAO_REFRESH_TOKEN_MOTHER", None),
         ("장인", "KAKAO_REFRESH_TOKEN_FATHER_IN_LAW", "KAKAO_SKIP_FATHER_IN_LAW"),
         ("장모님", "KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW", "KAKAO_SKIP_MOTHER_IN_LAW"),
     )
@@ -209,6 +210,7 @@ def main() -> None:
         "me": "본인",
         "wife": "배우자",
         "daughter": "딸",
+        "mother": "어머니",
         "father_in_law": "장인",
         "mother_in_law": "장모님",
     }
