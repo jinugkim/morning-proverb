@@ -4,3 +4,5 @@
 !.env.example
 __pycache__/
 *.py[cod]
+.vscode/
+*.code-workspace
