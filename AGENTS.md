@@ -51,7 +51,17 @@ flowchart TD
 
 ---
 
-## 4. 핵심 파일 및 역할
+## 4. 최근 구절 중복 방지 메커니즘 (Dedup Guardrail)
+- **문제 해결**: LLM의 인기 구절 편향(잠언 16:9, 16:3 등이 연속 발송되는 현상)을 원천 차단.
+- **동작 방식**:
+  1. `docs/proverbs.json`에서 최근 30일 이내 발송된 구절 목록(`get_recent_proverbs`)을 자동 추출.
+  2. Gemini 프롬프트에 `[중복 금지 목록]`으로 주입하여 해당 구절들을 절대 선택하지 못하도록 강제.
+  3. 생성된 응답에 최근 14일 이내 구절이 포함되어 있을 경우 코드 레벨에서 감지하여 자동으로 재시도(`retry`).
+  4. 잠언 31장 전체에서 다양하고 참신한 말씀이 골고루 발굴되도록 시스템 지침 강화.
+
+---
+
+## 5. 핵심 파일 및 역할
 - `.github/workflows/daily-proverb.yml`: Cloud Scheduler 또는 수동 실행을 받는 GitHub Actions 워크플로
 - `.github/workflows/pages.yml`: `docs/proverbs.json` 변경 시 정적 사이트 배포
 - `main.py`: 날씨 조회, Gemini 잠언 생성, 카카오톡 발송, JSON 히스토리 갱신 전체 파이프라인

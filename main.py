@@ -40,21 +40,56 @@ def get_weather() -> str:
         return "상쾌한 아침"
 
 
+def get_recent_proverbs(limit: int = 30) -> list[str]:
+    """Retrieve recently used proverb citations to prevent repetitive verses."""
+    record_path = Path("docs/proverbs.json")
+    try:
+        records = json.loads(record_path.read_text(encoding="utf-8"))
+        if not isinstance(records, list):
+            return []
+        recent = []
+        for item in records[:limit]:
+            scripture = item.get("scripture", "")
+            match = re.search(r"잠언\s*\d+\s*장\s*\d+\s*절", scripture)
+            if match:
+                recent.append(match.group(0))
+            elif scripture:
+                recent.append(scripture[:30])
+        return list(dict.fromkeys(recent))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
 def generate_message(date: datetime, weather: str) -> str:
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    recent_proverbs = get_recent_proverbs(limit=30)
+
+    exclusion_text = ""
+    if recent_proverbs:
+        formatted_list = ", ".join(recent_proverbs[:15])
+        exclusion_text = (
+            f"\n\n[중복 금지 목록 (최근 이미 발송된 구절)]\n"
+            f"{formatted_list}\n"
+            f"★주의: 위 구절들은 최근에 이미 발송되었으므로 '절대로' 다시 선택하지 마세요. "
+            f"잠언 1장부터 31장 전체에서 위 목록에 없는 참신하고 은혜로운 다른 구절을 선택하세요."
+        )
+
     prompt = (
         f"오늘 상황: {date.month}월 {date.day}일, {('월요일','화요일','수요일','목요일','금요일','토요일','일요일')[date.weekday()]}, "
         f"서울 날씨는 {weather}입니다.\n\n"
-        "이 상황에 맞춰 오늘 하루를 시작하는 데 도움이 되는 성경 잠언 구절 1개와 짧은 묵상 메시지를 작성해 주세요.\n"
+        "이 상황에 맞춰 오늘 하루를 시작하는 데 도움이 되는 성경 잠언 구절 1개와 짧은 묵상 메시지를 작성해 주세요."
+        f"{exclusion_text}\n\n"
         "[오늘의 잠언]\n\"구절 내용\" (잠언 X장 Y절)\n- 응원 메시지"
     )
     system_instruction = (
         "한국어로만 답하세요. 정확히 잠언 구절 하나와 짧은 응원 메시지를 요청 형식으로 작성하세요. "
         "날씨나 요일의 감성을 자연스럽게 반영하세요. 제목, 구절, 인용부호, 출처, 메시지 등 공백과 줄바꿈을 포함한 "
-        "공백과 줄바꿈을 포함한 전체 응답은 반드시 200자 이내여야 합니다. "
+        "전체 응답은 반드시 200자 이내여야 합니다. "
+        "이전에 자주 인용된 흔한 구절(예: 잠언 16장 9절, 16장 3절, 4장 18절 등)을 피하고, "
+        "잠언 31장 전체에서 새로운 지혜의 구절을 다양하고 깊이 있게 발굴해 주세요. "
         "설명이나 글자 수 표시는 덧붙이지 마세요."
     )
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
@@ -74,14 +109,27 @@ def generate_message(date: datetime, weather: str) -> str:
                 and re.search(r"\(\s*잠언\s*\d+\s*장\s*\d+\s*절\s*\)", message)
                 and re.search(r"(?:^|\n)\s*-\s*\S", message)
             )
+
+            # Check if newly generated verse collides with recent 14 days
+            is_duplicated = False
+            for prev in recent_proverbs[:14]:
+                prev_clean = re.sub(r"\s+", "", prev)
+                msg_clean = re.sub(r"\s+", "", message)
+                if prev_clean in msg_clean:
+                    is_duplicated = True
+                    break
+
             if message and len(message) <= MAX_MESSAGE_LENGTH and complete_format and not hit_token_limit:
+                if is_duplicated and attempt < 2:
+                    print(f"Gemini returned recently used proverb ({prev}); retrying for a fresh verse (attempt {attempt + 1})...")
+                    continue
                 return message
             print(
                 f"Gemini returned an incomplete/invalid message ({len(message)} chars); "
-                f"retry {attempt + 1}/1"
+                f"retry {attempt + 1}/2"
             )
         except Exception as exc:  # retry once for API and transient response errors
-            print(f"Gemini request failed; retry {attempt + 1}/1: {exc}")
+            print(f"Gemini request failed; retry {attempt + 1}/2: {exc}")
     # A short fallback ensures that a model/API failure does not prevent delivery.
     return "[오늘의 잠언]\n‘마음의 즐거움은 얼굴을 빛나게 한다’ (잠언 15장 13절)\n- 오늘도 기쁨으로 시작해요."
 
