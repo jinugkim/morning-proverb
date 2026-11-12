@@ -1,16 +1,11 @@
 name: Daily Proverb
 
 on:
-  schedule:
-    # Backup cron triggers (GitHub-hosted cron may have delays, Cloud Scheduler is primary)
-    # 02:27 KST (17:27 UTC on the previous day)
-    - cron: "27 17 * * *"
   workflow_dispatch:
     inputs:
       recipient:
         description: Message recipient (manual runs only)
         type: choice
-        required: false
         default: all
         options:
           - all

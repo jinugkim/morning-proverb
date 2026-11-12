@@ -29,12 +29,14 @@ flowchart TD
     end
 ```
 
-- **트리거 인프라**: **Google Cloud Scheduler**
+- **트리거 인프라**: **Google Cloud Scheduler (단독 트리거)**
   - 작업 이름: `morning-proverb-daily`
   - 리전: `asia-northeast3` (서울)
   - 빈도: `0 7 * * *` (KST 매일 아침 07:00)
   - 호출 대상: `POST https://api.github.com/repos/jinugkim/morning-proverb/actions/workflows/daily-proverb.yml/dispatches`
-- **정시성**: GitHub Actions 내장 크론 큐의 지연을 우회하여 **매일 아침 7시 00분에 1~2분 내로 정확히 발송**됨.
+- **정시성 & 중복 방지**:
+  - GitHub Actions 내장 cron은 심한 지연 및 이중 발송을 유발하므로 워크플로에서 완전히 제거됨.
+  - Google Cloud Scheduler를 통해 **매일 아침 7시 00분에 1~2분 내로 1회만 정확히 발송**됨.
 
 ---
 
