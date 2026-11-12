@@ -19,8 +19,116 @@ from google.genai import types
 SEOUL = ZoneInfo("Asia/Seoul")
 MAX_MESSAGE_LENGTH = 200
 HISTORY_LINK_MESSAGE = "지난 잠언 기록 보기:\nhttps://jinugkim.github.io/morning-proverb/"
+PAGES_URL = "https://jinugkim.github.io/morning-proverb/"
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 KAKAO_SEND_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+
+COURIER_DEFAULT_WORKER_URL = "https://courier-kakao-auth.jinug-kim.workers.dev"
+COURIER_DEFAULT_RECIPIENTS = ["ME", "EUNMI", "YUJU", "MOTHER", "FATHER_IN_LAW", "MOTHER_IN_LAW"]
+COURIER_OWNER = "jinugkim"
+COURIER_REPO = "courier"
+COURIER_PROJECT = "morning-proverb"
+
+
+def has_courier_config() -> bool:
+    """Return True if Courier tokens or dispatch tokens are available in the environment."""
+    return bool(
+        (os.environ.get("COURIER_WORKER_URL") and (os.environ.get("COURIER_SYNC_TOKEN") or os.environ.get("KAKAO_SYNC_TOKEN")))
+        or os.environ.get("COURIER_DISPATCH_TOKEN")
+        or os.environ.get("COURIER_SYNC_TOKEN")
+    )
+
+
+def send_via_courier(
+    message: str,
+    request_id: str,
+    link_url: str = PAGES_URL,
+    button_title: str = "지난 잠언 보기",
+    recipients: list[str] | None = None,
+) -> bool:
+    """Deliver a message to family recipients via the central Courier service."""
+    if recipients is None:
+        recipients_env = os.environ.get("COURIER_RECIPIENTS", "").strip()
+        if recipients_env:
+            try:
+                recipients = json.loads(recipients_env)
+            except Exception:
+                recipients = [r.strip().upper() for r in recipients_env.split(",") if r.strip()]
+        else:
+            recipients = COURIER_DEFAULT_RECIPIENTS
+
+    # 1. Cloudflare Worker direct send (Fast path: < 0.3s)
+    worker_url = (
+        os.environ.get("COURIER_WORKER_URL")
+        or os.environ.get("KAKAO_SYNC_URL")
+        or COURIER_DEFAULT_WORKER_URL
+    ).strip().rstrip("/")
+    sync_token = (
+        os.environ.get("COURIER_SYNC_TOKEN")
+        or os.environ.get("KAKAO_SYNC_TOKEN")
+        or ""
+    ).strip()
+
+    if worker_url and sync_token:
+        try:
+            worker_payload = {
+                "request_id": request_id,
+                "project": COURIER_PROJECT,
+                "message": message,
+                "recipients": recipients,
+                "link_url": link_url,
+                "button_title": button_title,
+            }
+            res = requests.post(
+                f"{worker_url}/internal/send",
+                headers={"Authorization": f"Bearer {sync_token}", "Content-Type": "application/json"},
+                json=worker_payload,
+                timeout=15,
+            )
+            if res.status_code == 200:
+                print(f"Cloudflare Worker 직접 전송 성공 (HTTP 200, request_id: {request_id})")
+                return True
+            print(
+                f"Cloudflare Worker 직접 전송 실패 (HTTP {res.status_code}): {res.text}, GitHub dispatch로 대체합니다.",
+                file=sys.stderr,
+            )
+        except Exception as exc:
+            print(f"Cloudflare Worker 직접 전송 예외 ({exc}), GitHub dispatch로 대체합니다.", file=sys.stderr)
+
+    # 2. Fall back to GitHub repository_dispatch
+    token = (
+        os.environ.get("COURIER_DISPATCH_TOKEN")
+        or os.environ.get("GH_PAT")
+        or ""
+    ).strip()
+    if not token:
+        raise RuntimeError("Courier 전송에 필요한 토큰(COURIER_SYNC_TOKEN 또는 COURIER_DISPATCH_TOKEN)이 설정되지 않았습니다.")
+
+    dispatch_url = f"https://api.github.com/repos/{COURIER_OWNER}/{COURIER_REPO}/dispatches"
+    payload = {
+        "event_type": "send-kakao-msg",
+        "client_payload": {
+            "request_id": request_id,
+            "project": COURIER_PROJECT,
+            "message": message,
+            "recipients": recipients,
+            "link_url": link_url,
+            "button_title": button_title,
+        },
+    }
+    response = requests.post(
+        dispatch_url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json=payload,
+        timeout=20,
+    )
+    response.raise_for_status()
+    print(f"Courier GitHub repository_dispatch 트리거 성공 (request_id: {request_id})")
+    return True
 
 # Keep local development convenient while preserving injected CI secrets.
 load_dotenv()
@@ -251,6 +359,41 @@ def main() -> None:
         else generate_message(now, get_weather())
     )
     print(f"Generated message ({len(proverb_message)} chars):\n{proverb_message}")
+
+    if has_courier_config():
+        print("중앙 라우터(Courier)를 통해 카카오톡 메시지를 발송합니다.")
+        target = os.getenv("KAKAO_TARGET_ACCOUNT", "").strip().lower()
+        target_map = {
+            "me": ["ME"],
+            "wife": ["EUNMI"],
+            "daughter": ["YUJU"],
+            "mother": ["MOTHER"],
+            "father_in_law": ["FATHER_IN_LAW"],
+            "mother_in_law": ["MOTHER_IN_LAW"],
+        }
+        recipients = target_map.get(target, COURIER_DEFAULT_RECIPIENTS)
+
+        request_id = (
+            f"morning-proverb:test:{int(now.timestamp())}"
+            if test_mode
+            else f"morning-proverb:{now.strftime('%Y-%m-%d')}"
+        )
+        try:
+            send_via_courier(
+                message=proverb_message,
+                request_id=request_id,
+                link_url=PAGES_URL,
+                button_title="지난 잠언 보기",
+                recipients=recipients,
+            )
+            print(f"Courier 발송 완료 (수신자: {recipients}, request_id: {request_id})")
+        except Exception as exc:
+            print(f"ERROR: Courier delivery failed: {exc}", file=sys.stderr)
+            raise
+
+        if not test_mode:
+            record_proverb(now, proverb_message)
+        return
 
     accounts = configured_accounts()
     target = os.getenv("KAKAO_TARGET_ACCOUNT", "").strip()

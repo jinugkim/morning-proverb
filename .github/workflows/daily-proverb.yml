@@ -45,6 +45,9 @@ jobs:
       - name: Generate and send proverb
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          COURIER_DISPATCH_TOKEN: ${{ secrets.COURIER_DISPATCH_TOKEN || secrets.GH_PAT }}
+          COURIER_WORKER_URL: ${{ vars.COURIER_WORKER_URL }}
+          COURIER_SYNC_TOKEN: ${{ secrets.COURIER_SYNC_TOKEN }}
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
           KAKAO_REFRESH_TOKEN_ME: ${{ (github.event_name == 'schedule' || (inputs.recipient || 'all') == 'all' || inputs.recipient == 'me') && secrets.KAKAO_REFRESH_TOKEN_ME || '' }}
           KAKAO_REFRESH_TOKEN_WIFE: ${{ (github.event_name == 'schedule' || (inputs.recipient || 'all') == 'all' || inputs.recipient == 'wife') && secrets.KAKAO_REFRESH_TOKEN_WIFE || '' }}

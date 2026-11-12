@@ -40,15 +40,18 @@ flowchart TD
 
 ---
 
-## 3. 카카오톡 인증 및 courier와의 관계
-- **독립형 자체 발송**: 중앙 라우터(`courier`)를 거치지 않고 `morning-proverb` 내부의 `main.py`가 카카오 OAuth 토큰 관리 및 발송을 직접 수행함.
+## 3. 카카오톡 발송 구조 (Courier 중앙 라우터 연동)
+- **중앙 라우터(`courier`) 연동**:
+  - `morning-proverb`는 카카오 OAuth 토큰 관리를 직접 하지 않고, 중앙 카카오톡 라우터 서비스인 `courier`에 발송을 위임함.
+  - **1순위 (Fast Path)**: `COURIER_WORKER_URL`과 `COURIER_SYNC_TOKEN`이 구성된 경우 Cloudflare Worker 직접 호출 (`POST /internal/send`, < 0.3초).
+  - **2순위 (Fallback)**: `COURIER_DISPATCH_TOKEN`을 통해 GitHub `repository_dispatch` 호출 (`jinugkim/courier`).
 - **다중 수신자 발송**:
-  - `KAKAO_REFRESH_TOKEN_ME` (본인)
-  - `KAKAO_REFRESH_TOKEN_WIFE` (배우자)
-  - `KAKAO_REFRESH_TOKEN_DAUGHTER` (딸)
-  - `KAKAO_REFRESH_TOKEN_MOTHER` (어머니)
-  - `KAKAO_REFRESH_TOKEN_FATHER_IN_LAW` (장인어른)
-  - `KAKAO_REFRESH_TOKEN_MOTHER_IN_LAW` (장모님)
+  - `ME` (본인)
+  - `EUNMI` (배우자)
+  - `YUJU` (딸)
+  - `MOTHER` (어머니)
+  - `FATHER_IN_LAW` (장인어른)
+  - `MOTHER_IN_LAW` (장모님)
 - **외부 API 호출 대응**: `workflow_dispatch` 호출 시 파라미터를 넘기지 않더라도 `recipient`가 `'all'`로 자동 폴백되도록 워크플로에 방어 로직 적용 완료.
 
 ---
