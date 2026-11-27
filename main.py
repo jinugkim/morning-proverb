@@ -197,17 +197,32 @@ def generate_message(date: datetime, weather: str) -> str:
         "잠언 31장 전체에서 새로운 지혜의 구절을 다양하고 깊이 있게 발굴해 주세요. "
         "설명이나 글자 수 표시는 덧붙이지 마세요."
     )
+    primary_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip() or "gemini-3.8-flash"
+    model_candidates = list(dict.fromkeys([primary_model, "gemini-flash-latest"]))
     for attempt in range(3):
         try:
-            response = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    thinking_config=types.ThinkingConfig(thinking_level="low"),
-                    max_output_tokens=1024,
-                ),
-            )
+            response = None
+            last_err = None
+            for idx, candidate_model in enumerate(model_candidates):
+                try:
+                    response = client.models.generate_content(
+                        model=candidate_model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            thinking_config=types.ThinkingConfig(thinking_level="low"),
+                            max_output_tokens=1024,
+                        ),
+                    )
+                    break
+                except Exception as model_exc:
+                    last_err = model_exc
+                    err_low = str(model_exc).lower()
+                    if idx < len(model_candidates) - 1 and any(k in err_low for k in ("404", "not_found", "not found", "deprecated")):
+                        continue
+                    raise
+            if response is None and last_err is not None:
+                raise last_err
             message = (response.text or "").strip()
             candidate = response.candidates[0] if response.candidates else None
             finish_reason = str(getattr(candidate, "finish_reason", "")).upper()
